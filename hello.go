@@ -3,6 +3,8 @@ package main
 import (
 	"example/utils"
 	"fmt"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -15,4 +17,15 @@ func main() {
 	fmt.Println(utils.MagicTria(n))
 	utils.MagicChange(&n)
 	fmt.Println(n)
+	test()
+}
+
+func test() {
+	r := gin.Default()
+	r.GET("/try", func(ctx *gin.Context) {
+		ctx.JSON(200, gin.H{
+			"message": "hahahihi",
+		})
+	})
+	r.Run()
 }
