@@ -1,7 +1,13 @@
 package utils
 
-func MagicSum(n int) int {
-	return n + n
+import "regexp"
+
+func MagicSum(a, b int) int {
+	return a + b
+}
+
+func MagicSub(a, b int) int {
+	return a / b
 }
 
 func MagicPow(n int) int {
@@ -51,4 +57,12 @@ func MagicTria(n int) int {
 
 func MagicChange(n *int) {
 	*n = *n * 2
+}
+
+func AlphanumericCheck(email string) bool {
+	return regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`).MatchString(email)
+}
+
+func NumericCheck(password string) bool {
+	return regexp.MustCompile("^[0-9_]*$").MatchString(password)
 }
