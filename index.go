@@ -6,6 +6,7 @@ import (
 	"example/utils"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,8 @@ func main() {
 		log.Fatal("failed to get DB from GORM:", err)
 	}
 	defer sqlDB.Close()
+
+	jwtKey := os.Getenv("JWTKEY")
 
 	r := gin.Default()
 	r.GET("/", func(ctx *gin.Context) {
@@ -46,7 +49,7 @@ func main() {
 		math.POST("/sub", handlers.MathSubHandler)
 	}
 
-	authHandler := handlers.NewAuth()
+	authHandler := handlers.NewAuth(db, []byte(jwtKey))
 	auth := r.Group("/auth")
 	auth.POST("/login", authHandler.AuthLogin)
 
