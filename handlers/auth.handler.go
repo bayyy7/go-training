@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -71,13 +72,10 @@ func (a *authImplement) AuthLogin(ctx *gin.Context) {
 		return
 	}
 
-	if err := a.db.Where("password = ?", payload.Password).First(&auth).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"error": "Password Salah",
-			})
-			return
-		}
+	if err := bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(payload.Password)); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error": "Password salah",
+		})
 		return
 	}
 
@@ -96,7 +94,7 @@ func (a *authImplement) AuthLogin(ctx *gin.Context) {
 }
 
 func (a *authImplement) AuthSignUp(ctx *gin.Context) {
-	payload := model.Auth{}
+	payload := authPayload{}
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -104,12 +102,12 @@ func (a *authImplement) AuthSignUp(ctx *gin.Context) {
 		})
 	}
 
-	if !utils.AlphanumericCheck(payload.Username) {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
-			"message": "email must be alphanumeric",
-		})
-		return
-	}
+	// if !utils.AlphanumericCheck(payload.Username) {
+	// 	ctx.JSON(http.StatusUnauthorized, gin.H{
+	// 		"message": "username must be alphanumeric",
+	// 	})
+	// 	return
+	// }
 
 	if !utils.NumericCheck(payload.Password) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -118,7 +116,27 @@ func (a *authImplement) AuthSignUp(ctx *gin.Context) {
 		return
 	}
 
-	result := a.db.Create(&payload)
+	existingUser := model.Auth{}
+	if result := a.db.Where("username = ?", payload.Username).First(&existingUser); result.RowsAffected > 0 {
+		ctx.AbortWithStatusJSON(http.StatusConflict, gin.H{
+			"error": "username already exist",
+		})
+		return
+	}
+
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+	}
+
+	newUser := model.Auth{
+		Username: payload.Username,
+		Password: string(hashPassword),
+	}
+
+	result := a.db.Create(&newUser)
 	if result.Error != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": result.Error.Error(),
@@ -127,6 +145,6 @@ func (a *authImplement) AuthSignUp(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Succes",
+		"message": "User register succesfully",
 	})
 }

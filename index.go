@@ -3,6 +3,7 @@ package main
 import (
 	"example/database"
 	"example/handlers"
+	"example/middleware"
 	"example/utils"
 	"log"
 	"net/http"
@@ -50,16 +51,24 @@ func main() {
 	}
 
 	authHandler := handlers.NewAuth(db, []byte(jwtKey))
-	auth := r.Group("/auth")
-	auth.POST("/login", authHandler.AuthLogin)
+	authRoutes := r.Group("/auth")
+	authRoutes.POST("/login", authHandler.AuthLogin)
+	authRoutes.POST("/signup", authHandler.AuthSignUp)
 
 	accountHandler := handlers.NewAccount(db)
 	accountRoutes := r.Group("/account")
 	accountRoutes.POST("/create", accountHandler.Create)
 	accountRoutes.GET("/read/:id", accountHandler.Read)
-	accountRoutes.PATCH("/update/:id", accountHandler.Update)
+	accountRoutes.PATCH("/update/:id", middleware.AuthJWTMiddleware(jwtKey), accountHandler.Update)
 	accountRoutes.DELETE("/delete/:id", accountHandler.Delete)
 	accountRoutes.GET("/list", accountHandler.List)
+	accountRoutes.GET("/my", middleware.AuthJWTMiddleware(jwtKey), accountHandler.My)
+	accountRoutes.POST("/topup/:id", accountHandler.TopUp)
+	accountRoutes.GET("/balance", middleware.AuthJWTMiddleware(jwtKey), accountHandler.Balance)
+	accountRoutes.POST("/transfer", middleware.AuthJWTMiddleware(jwtKey), accountHandler.Transfer)
 
+	transactionHandler := handlers.NewTransaction(db)
+	transactionRoutes := r.Group("/transaction")
+	transactionRoutes.GET("/last/:id", transactionHandler.LastTransaction)
 	r.Run()
 }

@@ -9,3 +9,7 @@ type Transaction struct {
 	Amount                int64 `json:"amount"`
 	TransactionDate       int64 `json:"transaction_date"`
 }
+
+func (Transaction) TableName() string {
+	return "transaction"
+}
