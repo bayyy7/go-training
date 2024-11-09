@@ -102,14 +102,7 @@ func (a *authImplement) AuthSignUp(ctx *gin.Context) {
 		})
 	}
 
-	// if !utils.AlphanumericCheck(payload.Username) {
-	// 	ctx.JSON(http.StatusUnauthorized, gin.H{
-	// 		"message": "username must be alphanumeric",
-	// 	})
-	// 	return
-	// }
-
-	if !utils.NumericCheck(payload.Password) {
+	if !utils.CharacterCheck(payload.Password) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"message": "password must be numeric",
 		})

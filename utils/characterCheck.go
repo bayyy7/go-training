@@ -2,10 +2,7 @@ package utils
 
 import "regexp"
 
-func AlphanumericCheck(email string) bool {
-	return regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`).MatchString(email)
-}
-
-func NumericCheck(password string) bool {
-	return regexp.MustCompile("^[0-9_]*$").MatchString(password)
+func CharacterCheck(str string) bool {
+	hasAlphanumeric := regexp.MustCompile(`[a-zA-Z0-9]`).MatchString(str)
+	return hasAlphanumeric && len(str) > 0
 }

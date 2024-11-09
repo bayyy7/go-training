@@ -224,11 +224,33 @@ func (a *accountImplement) TopUp(ctx *gin.Context) {
 		return
 	}
 
-	account.Balance = account.Balance + payload.Balance
-	a.db.Save(account)
+	tx := a.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	account.Balance += payload.Balance
+	if err := tx.Save(&account).Error; err != nil {
+		tx.Rollback()
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Update success",
+		"balance": account.Balance,
 	})
 }
 
@@ -268,7 +290,6 @@ func (a *accountImplement) Transfer(ctx *gin.Context) {
 		return
 	}
 
-	// Fetch both sender and recipient accounts in a single query
 	accounts := []model.Account{senderAccount, recepientAccount}
 	if err := a.db.Where("account_id IN (?)", []int64{accountID, payload.TargetID}).Find(&accounts).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -293,7 +314,6 @@ func (a *accountImplement) Transfer(ctx *gin.Context) {
 		return
 	}
 
-	// Start a database transaction
 	tx := a.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -301,7 +321,6 @@ func (a *accountImplement) Transfer(ctx *gin.Context) {
 		}
 	}()
 
-	// Update account balances
 	senderAccount.Balance -= payload.Amount
 	if err := tx.Save(&senderAccount).Error; err != nil {
 		tx.Rollback()
@@ -320,7 +339,6 @@ func (a *accountImplement) Transfer(ctx *gin.Context) {
 		return
 	}
 
-	// Commit the transaction
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
 		ctx.JSON(http.StatusInternalServerError, gin.H{
