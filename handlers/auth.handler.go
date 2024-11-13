@@ -10,11 +10,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AuthInterface interface {
 	AuthLogin(*gin.Context)
 	AuthSignUp(*gin.Context)
+	Upsert(*gin.Context)
 }
 
 type authImplement struct {
@@ -139,5 +141,69 @@ func (a *authImplement) AuthSignUp(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "User register succesfully",
+	})
+}
+
+type authUpsertPayload struct {
+	AccountID int64  `json:"account_id"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+}
+
+func (a *authImplement) Upsert(c *gin.Context) {
+	payload := authUpsertPayload{}
+
+	err := c.BindJSON(&payload)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": err,
+		})
+		return
+	}
+
+	var account model.Account
+	if err := a.db.First(&account, payload.AccountID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"error": "Account Not found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	auth := model.Auth{
+		AccountID: payload.AccountID,
+		Username:  payload.Username,
+		Password:  string(hashed),
+	}
+
+	result := a.db.Clauses(
+		clause.OnConflict{
+			DoUpdates: clause.AssignmentColumns([]string{"username", "password"}),
+			Columns:   []clause.Column{{Name: "account_id"}},
+		}).Create(&auth)
+	if result.Error != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": result.Error.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Create success",
+		"data":    payload.Username,
 	})
 }

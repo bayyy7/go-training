@@ -54,6 +54,7 @@ func main() {
 	authRoutes := r.Group("/auth")
 	authRoutes.POST("/login", authHandler.AuthLogin)
 	authRoutes.POST("/signup", authHandler.AuthSignUp)
+	authRoutes.POST("/upsert", authHandler.Upsert)
 
 	accountHandler := handlers.NewAccount(db)
 	accountRoutes := r.Group("/account")
